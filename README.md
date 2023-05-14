@@ -33,8 +33,15 @@ device as demonstrated below:
 Additionally, there is a "flash" target which automates this command after the
 build for maximum convenience.
 
-Note that for successful flashing, you'll have to make sure the device isn't
-actively running from flash. To do that in my case just stick a spare jumper
-between VDD and BOOT0, i.e. on pins 5 and 7 of CN7 (3rd and 4th from the top,
-left-hand side). That will result in the device booting to SRAM (check the
-datasheet for details/to verify), allowing the flash to be written.
+To allow debugging using the SWD, make sure you don't try to use pins PA13 or
+PA14 for anything else. By default it's set up in hardware to allow debugging so
+you should just be able to fire up openocd and gdb (arm version of gdb, that is)
+and hopefully it'll just work. Additionally, this is needed in order to flash
+while the program is running from flash memory.
+
+If you fail to do so, in order to flash without an issue you'll have to make
+sure the device isn't actively running from flash memory. To do that in my case
+just stick a spare jumper between VDD and BOOT0, i.e. on pins 5 and 7 of CN7
+(3rd and 4th from the top, left-hand side). That will result in the device
+booting to SRAM (check the datasheet for details/to verify), allowing the flash
+to be written.

@@ -3,12 +3,15 @@ TARGET_BIN := blink.bin
 
 BUILD_DIR_BASE = ./build
 SRC_DIRS := ./src
+SEMIHOSTING_ONLY_SRC := ./src/semihosting
+USART_ONLY_SRC := ./src/usart
+NOCOMMS_SRC := ./src/no-comms
 EXTRA_LIB_DIRS := /usr/arm-none-eabi/include/ /usr/arm-none-eabi/lib/
 CC = /usr/bin/arm-none-eabi-gcc
 OBJCOPY = /usr/bin/arm-none-eabi-objcopy
 
 ifndef mode
-	mode = semihosted
+	mode = usart
 endif
 
 MAKEFLAGS += "j $(nproc)"
@@ -22,43 +25,50 @@ CFLAGS = -g -Wall -std=c89 -pedantic -Wextra -Wconversion -Wcast-align=strict \
 		 -Waggregate-return -Wunreachable-code \
 		 -ffreestanding \
 		 -fomit-frame-pointer -fno-exceptions -fno-asynchronous-unwind-tables \
-		 -fno-unwind-tables \
+		 -fno-unwind-tables -nostartfiles \
 		 $(COREFLAGS)
 
 LDFLAGS = $(COREFLAGS) -L/usr/arm-none-eabi/lib/arm/v5te/hard \
-		  -L/usr/arm-none-eabi/lib -Wl,--gc-sections \
+		  -L/usr/arm-none-eabi/lib -Wl,--gc-sections,--verbose \
 		  -Tstm32f4.ld
-		  
-#LDLIBS := /usr/arm-none-eabi/lib/crt0.o \
-#		  /usr/arm-none-eabi/lib/libc.a \
-#		  /usr/arm-none-eabi/lib/libm.a \
-#		  /usr/arm-none-eabi/lib/libnosys.a
 
-ifeq ($(mode), release)
-CFLAGS += -nostartfiles
+# !!! IMPORTANT !!! 
+# If you're desperately trying to figure out why division doesn't work, try
+# -lgcc. However, be sure to remember that it's sloooow.
+
 SPEC_FILE := --specs=nano.specs 
-else
-CFLAGS += -lc -lrdimon -DSEMIHOSTING
-SPEC_FILE := --specs=rdimon.specs --specs=nano.specs 
+
+ifeq ($(mode), semihosted)
+CFLAGS += -DSEMIHOSTING -lrdimon -lc -lgcc
+LDFLAGS += -lrdimon -lc -lgcc
+SPEC_FILE += --specs=rdimon.specs
+else ifeq ($(mode), usart)
+CFLAGS += -DUSART
 endif
 
 ifeq ($(mode), debug)
 CFLAGS += -O0
-BUILD_DIR := $(BUILD_DIR_BASE)/debug
 else
 CFLAGS += -O2
-ifeq ($(mode), semihosted)
+endif
+
+ifeq ($(mode), debug)
+BUILD_DIR := $(BUILD_DIR_BASE)/debug
+else ifeq ($(mode), semihosted)
 BUILD_DIR := $(BUILD_DIR_BASE)/semihosted
+else ifeq ($(mode), usart)
+BUILD_DIR := $(BUILD_DIR_BASE)/usart
 else
 BUILD_DIR := $(BUILD_DIR_BASE)/release
-endif
 endif
 
 mode_defined = 1
 ifneq ($(mode), release)
 ifneq ($(mode), debug)
 ifneq ($(mode), semihosted)
+ifneq ($(mode), usart)
 mode_defined = 0
+endif
 endif
 endif
 endif
@@ -66,7 +76,20 @@ endif
 # Find all the C files we want to compile
 # Note the single quotes around the * expressions. Make will incorrectly expand
 # these otherwise.
-SRCS := $(shell find $(SRC_DIRS) -name '*.c')
+
+ifeq ($(mode), semihosted)
+prune_command += -path $(NOCOMMS_SRC) -prune -o
+else
+prune_command += -path $(SEMIHOSTING_ONLY_SRC) -prune -o
+endif
+
+ifeq ($(mode), usart)
+prune_command += -path $(NOCOMMS_SRC) -prune -o
+else
+prune_command += -path $(USART_ONLY_SRC) -prune -o
+endif
+
+SRCS := $(shell find $(SRC_DIRS) $(prune_command) -name '*.c' -print)
 
 # String substitution for every C file.
 # As an example, hello.c turns into ./build/hello.c.o
@@ -78,7 +101,7 @@ DEPS := $(OBJS:.o=.d)
 
 # Every folder in ./src will need to be passed to GCC so that it can find header
 # files
-INC_DIRS := $(shell find $(SRC_DIRS) -type d)
+INC_DIRS := $(shell find $(SRC_DIRS) $(prune_command) -type d -print)
 # Add a prefix to INC_DIRS. So moduleA would become -ImoduleA. GCC understands
 # this -I flag
 INC_FLAGS := $(addprefix -I,$(INC_DIRS) $(EXTRA_LIB_DIRS))
@@ -93,7 +116,7 @@ all: information $(BUILD_DIR)/$(TARGET_ELF)
 information:
 ifeq ($(mode_defined), 0)
 	$(error Invalid build mode. Please use 'make mode=release', 'make \
-		mode=semihosted' (default) or 'make mode=debug')
+		mode=semihosted', 'make mode=usart' (default) or 'make mode=debug')
 else
 	$(info  Building in "$(mode)" mode)
 endif

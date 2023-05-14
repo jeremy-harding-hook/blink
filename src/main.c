@@ -6,6 +6,9 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/cm3/nvic.h>
 
+#ifdef USART
+#include "usart/usart.h"
+#endif
 
 #ifdef SEMIHOSTING
 #include <stdio.h>
@@ -16,7 +19,12 @@ extern void initialise_monitor_handles(void);
 #endif
 
 #define LED_PORT GPIOA
-#define LED_BIT GPIO_ALL 
+#define LED_BIT GPIO5 
+
+/* Note: these don't require any setup, but don't try to use them for other
+ * features as they are needed for the debugger to connect */
+#define SWD_PORT GPIOA
+#define SWD_BIT (GPIO13 | GPIO14)
 
 #if 0
 void tim2_isr(void){
@@ -39,6 +47,10 @@ int main(void) {
 	/* set up output led */
 	rcc_periph_clock_enable(RCC_GPIOA); 
 	gpio_mode_setup(LED_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, LED_BIT);
+
+#ifdef USART
+	usart_setup();
+#endif
 	/*gpio_set_output_options(LED_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_2MHZ, LED_BIT); */
 	/* gpio_set(LED_PORT, LED_BIT); */
 
@@ -59,6 +71,10 @@ int main(void) {
 	printf("hello world!\n");
 #endif
 
+#ifdef USART
+	console_puts("hello world!\n");
+	console_puts("This is USART2 speaking!\n");
+#endif
 	while(1){
 		gpio_toggle(LED_PORT, LED_BIT);
 		for(i = 0; i < 1000000; i++){
