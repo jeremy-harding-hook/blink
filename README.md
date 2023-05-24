@@ -7,10 +7,8 @@ To deploy, first call make, optionally setting the mode as below:
 
     make mode=debug
 
-Note that the valid modes are debug, semihosted, and release. The idea is that
-semihosted is good for debugging with some logging output and stuff but still
-with optimisation as opposed to debug. Release on the other hand doesn't have
-semihosting.
+Note that the valid modes are debug and release. These are the same except that
+debug has less optimisation. The default mode is release.
 
 The makefile in addition to outputting a regular .elf file also does the
 equivalent of running the command below from the output folder:
@@ -45,3 +43,7 @@ just stick a spare jumper between VDD and BOOT0, i.e. on pins 5 and 7 of CN7
 (3rd and 4th from the top, left-hand side). That will result in the device
 booting to SRAM (check the datasheet for details/to verify), allowing the flash
 to be written.
+
+In order to make use of the USART, use stty to set the speed to 115200 and the
+mode to raw. Then in one terminal you can cat it out, and in another cat in
+taking from the stdin. Note that at present this is buggy somehow.

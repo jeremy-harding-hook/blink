@@ -3,48 +3,37 @@ TARGET_BIN := blink.bin
 
 BUILD_DIR_BASE = ./build
 SRC_DIRS := ./src
-SEMIHOSTING_ONLY_SRC := ./src/semihosting
-USART_ONLY_SRC := ./src/usart
-NOCOMMS_SRC := ./src/no-comms
 EXTRA_LIB_DIRS := /usr/arm-none-eabi/include/ /usr/arm-none-eabi/lib/
 CC = /usr/bin/arm-none-eabi-gcc
 OBJCOPY = /usr/bin/arm-none-eabi-objcopy
 
 ifndef mode
-	mode = usart
+	mode = release
 endif
 
 MAKEFLAGS += "j $(nproc)"
 
 COREFLAGS = -mcpu=cortex-m4 -DSTM32F4 -lopencm3_stm32f4 -mfloat-abi=hard \
-			-nostdlib
+		-fomit-frame-pointer -fno-exceptions -fno-asynchronous-unwind-tables \
+		-fno-unwind-tables \
+#			-nostdlib 
 
-CFLAGS = -g -Wall -std=c89 -pedantic -Wextra -Wconversion -Wcast-align=strict \
-		 -Wcast-qual -Wfloat-equal -Wundef -Wshadow -Wpointer-arith \
-		 -Wstrict-prototypes -Wstrict-overflow=5 -Wwrite-strings \
-		 -Waggregate-return -Wunreachable-code \
-		 -ffreestanding \
-		 -fomit-frame-pointer -fno-exceptions -fno-asynchronous-unwind-tables \
-		 -fno-unwind-tables -nostartfiles \
-		 $(COREFLAGS)
+CFLAGS = $(COREFLAGS) -nostartfiles  \
+		-g -Wall -std=c89 -pedantic -Wextra -Wconversion -Wcast-align=strict \
+		-Wcast-qual -Wfloat-equal -Wundef -Wshadow -Wpointer-arith \
+		-Wstrict-prototypes -Wstrict-overflow=5 -Wwrite-strings \
+		-Waggregate-return -Wunreachable-code \
+		-ffreestanding \
 
 LDFLAGS = $(COREFLAGS) -L/usr/arm-none-eabi/lib/arm/v5te/hard \
-		  -L/usr/arm-none-eabi/lib -Wl,--gc-sections,--verbose \
-		  -Tstm32f4.ld
+		  -L/usr/arm-none-eabi/lib -Tstm32f4.ld -Wl,--gc-sections,--verbose \
+		   
 
 # !!! IMPORTANT !!! 
 # If you're desperately trying to figure out why division doesn't work, try
 # -lgcc. However, be sure to remember that it's sloooow.
 
 SPEC_FILE := --specs=nano.specs 
-
-ifeq ($(mode), semihosted)
-CFLAGS += -DSEMIHOSTING -lrdimon -lc -lgcc
-LDFLAGS += -lrdimon -lc -lgcc
-SPEC_FILE += --specs=rdimon.specs
-else ifeq ($(mode), usart)
-CFLAGS += -DUSART
-endif
 
 ifeq ($(mode), debug)
 CFLAGS += -O0
@@ -54,10 +43,6 @@ endif
 
 ifeq ($(mode), debug)
 BUILD_DIR := $(BUILD_DIR_BASE)/debug
-else ifeq ($(mode), semihosted)
-BUILD_DIR := $(BUILD_DIR_BASE)/semihosted
-else ifeq ($(mode), usart)
-BUILD_DIR := $(BUILD_DIR_BASE)/usart
 else
 BUILD_DIR := $(BUILD_DIR_BASE)/release
 endif
@@ -65,11 +50,7 @@ endif
 mode_defined = 1
 ifneq ($(mode), release)
 ifneq ($(mode), debug)
-ifneq ($(mode), semihosted)
-ifneq ($(mode), usart)
 mode_defined = 0
-endif
-endif
 endif
 endif
 
@@ -77,19 +58,7 @@ endif
 # Note the single quotes around the * expressions. Make will incorrectly expand
 # these otherwise.
 
-ifeq ($(mode), semihosted)
-prune_command += -path $(NOCOMMS_SRC) -prune -o
-else
-prune_command += -path $(SEMIHOSTING_ONLY_SRC) -prune -o
-endif
-
-ifeq ($(mode), usart)
-prune_command += -path $(NOCOMMS_SRC) -prune -o
-else
-prune_command += -path $(USART_ONLY_SRC) -prune -o
-endif
-
-SRCS := $(shell find $(SRC_DIRS) $(prune_command) -name '*.c' -print)
+SRCS := $(shell find $(SRC_DIRS) -name '*.c' -print)
 
 # String substitution for every C file.
 # As an example, hello.c turns into ./build/hello.c.o
@@ -115,8 +84,8 @@ all: information $(BUILD_DIR)/$(TARGET_ELF)
 
 information:
 ifeq ($(mode_defined), 0)
-	$(error Invalid build mode. Please use 'make mode=release', 'make \
-		mode=semihosted', 'make mode=usart' (default) or 'make mode=debug')
+	$(error Invalid build mode. Please use 'make mode=release' (default) 
+		\ or 'make mode=debug')
 else
 	$(info  Building in "$(mode)" mode)
 endif

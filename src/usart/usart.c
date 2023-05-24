@@ -33,13 +33,18 @@ void console_putc(const char c)
 	USART_DR(CONSOLE_UART) = (uint16_t) c & 0xff;
 }
 
-char console_getc(const int wait)
+char console_getc(const int wait, const int ignore_idle)
 {
 	uint32_t	reg;
+	const unsigned int invalidity_bitmask = ignore_idle ?
+		USART_SR_RXNE | USART_SR_IDLE :
+		USART_SR_RXNE;
+	char data;
 	do {
-		reg = USART_SR(CONSOLE_UART);
-	} while ((wait != 0) && ((reg & USART_SR_RXNE) == 0));
-	return (reg & USART_SR_RXNE) ? (char)USART_DR(CONSOLE_UART) : '\000';
+		reg = USART_SR(CONSOLE_UART) ^ USART_SR_RXNE;
+		data = (char)USART_DR(CONSOLE_UART); 
+	} while (wait && (reg & invalidity_bitmask));
+	return (reg & invalidity_bitmask) ? '\000' : data;
 }
 
 void console_puts(const char * s)
@@ -54,14 +59,14 @@ void console_puts(const char * s)
 	}
 }
 
-int console_gets(char *s, int len)
+int console_gets(char * const s, const int len)
 {
 	char *t = s;
 	char c;
 
 	*t = '\000';
 	/* read until a <CR> is received */
-	while ((c = console_getc(1)) != '\r') {
+	while ((c = console_getc(1, 1)) != '\r') {
 		if ((c == '\010') || (c == '\127')) {
 			if (t > s) {
 				/* send ^H ^H to erase previous character */
@@ -71,7 +76,7 @@ int console_gets(char *s, int len)
 		} else {
 			*t = c;
 			console_putc(c);
-			if ((t - s) < len) {
+			if ((t - s + 1) < len) {
 				t++;
 				/* TODO: Improve user feedback here? */
 			}

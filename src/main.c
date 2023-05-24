@@ -5,18 +5,11 @@
 #include <libopencm3/stm32/timer.h>
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/cm3/nvic.h>
-
-#ifdef USART
+#include <string.h>
+#include <stdlib.h>
 #include "usart/usart.h"
-#endif
 
-#ifdef SEMIHOSTING
-#include <stdio.h>
-#endif
-
-#ifdef SEMIHOSTING
-extern void initialise_monitor_handles(void);
-#endif
+#define HARD_STUFF
 
 #define LED_PORT GPIOA
 #define LED_BIT GPIO5 
@@ -26,6 +19,7 @@ extern void initialise_monitor_handles(void);
 #define SWD_PORT GPIOA
 #define SWD_BIT (GPIO13 | GPIO14)
 
+#define INPUT_LENGTH_MAX 30
 #if 0
 void tim2_isr(void){
 	if(!timer_get_flag(TIM2, TIM_SR_CC1IF))
@@ -36,21 +30,12 @@ void tim2_isr(void){
 #endif
 
 int main(void) {
-	
 	int i;
-#ifdef SEMIHOSTING
-	initialise_monitor_handles();
-#else
-	/* do something... */
-#endif
-
 	/* set up output led */
 	rcc_periph_clock_enable(RCC_GPIOA); 
 	gpio_mode_setup(LED_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, LED_BIT);
 
-#ifdef USART
 	usart_setup();
-#endif
 	/*gpio_set_output_options(LED_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_2MHZ, LED_BIT); */
 	/* gpio_set(LED_PORT, LED_BIT); */
 
@@ -67,19 +52,24 @@ int main(void) {
 		timer_enable_irq(TIM2, TIM_DIER_CC1IE);
 #endif
 
-#ifdef SEMIHOSTING
-	printf("hello world!\n");
-#endif
-
-#ifdef USART
-	console_puts("hello world!\n");
+	console_puts("Hello world!\n");
 	console_puts("This is USART2 speaking!\n");
-#endif
 	while(1){
+#ifdef HARD_STUFF
+		char user_command[INPUT_LENGTH_MAX];
+
+		console_puts("Type 'toggle' in order to turn the led on or off.");
+		console_gets(user_command, INPUT_LENGTH_MAX);	
+
+		while(!strcmp(user_command, "toggle")){
+			console_puts("Command not recognised!");
+			console_gets(user_command, INPUT_LENGTH_MAX);	
+		}
+#endif
 		gpio_toggle(LED_PORT, LED_BIT);
-		for(i = 0; i < 1000000; i++){
+		for (i=0; i < 1000000; i++){
 			__asm__("nop");
-		}	
+		}
 	}
 
 	return 0;
