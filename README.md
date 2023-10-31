@@ -46,4 +46,4 @@ to be written.
 
 In order to make use of the USART, use stty to set the speed to 115200 and the
 mode to raw. Then in one terminal you can cat it out, and in another cat in
-taking from the stdin. Note that at present this is buggy somehow.
+taking from the stdin. Alternatively, if you have screen you can just use that.

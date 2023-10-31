@@ -5,8 +5,8 @@
 #include <libopencm3/stm32/timer.h>
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/cm3/nvic.h>
-#include <string.h>
-#include <stdlib.h>
+#include "stdio.h"
+#include "utils/string.h"
 #include "usart/usart.h"
 
 #define HARD_STUFF
@@ -19,7 +19,7 @@
 #define SWD_PORT GPIOA
 #define SWD_BIT (GPIO13 | GPIO14)
 
-#define INPUT_LENGTH_MAX 30
+#define INPUT_LENGTH_MAX 11
 #if 0
 void tim2_isr(void){
 	if(!timer_get_flag(TIM2, TIM_SR_CC1IF))
@@ -30,7 +30,6 @@ void tim2_isr(void){
 #endif
 
 int main(void) {
-	int i;
 	/* set up output led */
 	rcc_periph_clock_enable(RCC_GPIOA); 
 	gpio_mode_setup(LED_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, LED_BIT);
@@ -49,26 +48,25 @@ int main(void) {
 	timer_continuous_mode(TIM2);
 	timer_set_oc_value(TIM2, TIM_OC1, 900);
 	timer_enable_counter(TIM2);
-		timer_enable_irq(TIM2, TIM_DIER_CC1IE);
+	timer_enable_irq(TIM2, TIM_DIER_CC1IE);
 #endif
 
 	console_puts("Hello world!\n");
 	console_puts("This is USART2 speaking!\n");
+	console_puts(
+			"Please note that all commands must be 10 characters or less\n");
+
 	while(1){
-#ifdef HARD_STUFF
 		char user_command[INPUT_LENGTH_MAX];
-
-		console_puts("Type 'toggle' in order to turn the led on or off.");
-		console_gets(user_command, INPUT_LENGTH_MAX);	
-
-		while(!strcmp(user_command, "toggle")){
-			console_puts("Command not recognised!");
-			console_gets(user_command, INPUT_LENGTH_MAX);	
+		console_gets(user_command, INPUT_LENGTH_MAX);
+		if(!strcmp(user_command, "toggle")){
+			gpio_toggle(LED_PORT, LED_BIT);
 		}
-#endif
-		gpio_toggle(LED_PORT, LED_BIT);
-		for (i=0; i < 1000000; i++){
-			__asm__("nop");
+		else if(!strcmp(user_command, "help")){
+			console_puts("Type 'toggle' in order to turn the led on or off.\n");
+		}
+		else{
+			console_puts("Command not recognised!\n");
 		}
 	}
 

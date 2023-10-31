@@ -26,7 +26,7 @@ CFLAGS = $(COREFLAGS) -nostartfiles  \
 		-ffreestanding \
 
 LDFLAGS = $(COREFLAGS) -L/usr/arm-none-eabi/lib/arm/v5te/hard \
-		  -L/usr/arm-none-eabi/lib -Tstm32f4.ld -Wl,--gc-sections,--verbose \
+		  -L/usr/arm-none-eabi/lib -Tstm32f4.ld -Wl,--gc-sections
 		   
 
 # !!! IMPORTANT !!! 
